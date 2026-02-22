@@ -43,7 +43,7 @@ ALL_SYMBOLS.sort()
 # ==============================
 def send_telegram_alert(message):
     # !!! BẠN HÃY THAY 2 DÒNG DƯỚI ĐÂY BẰNG TOKEN VÀ ID CỦA BẠN !!!
-    bot_token = "8233720018:AAESn500nYSftVshNxDtQh0qgCqHuGJBQLQ"
+    bot_token = "8563387783:AAEh9DwH_iTHYsF7TihlsgKR4BmnMZfRVYI"
     bot_chatID = "1972517879"
     
     if bot_token == "ĐIỀN_TOKEN_CỦA_BẠN_VÀO_ĐÂY": return # Bỏ qua nếu chưa điền
@@ -243,7 +243,7 @@ c3.metric("Cắt Lỗ (Stop)", f"{stop:,.2f}", f"{(stop-entry)/entry*100:.1f}%")
 c4.metric("RSI Hiện tại", f"{current_rsi:.1f}")
 
 st.divider()
-st.markdown("### 🤖 Trợ lý phân tích (Dành cho Newbie)")
+st.markdown("### 🤖 Trợ lý phân tích")
 if shares == 0: st.error("⚠️ **Cảnh báo:** Rủi ro quá lớn hoặc vốn không đủ mua 1 lô (100 cổ).")
 else:
     if current_rsi > 70: st.warning(f"⚠️ **Cẩn thận:** RSI quá mua ({current_rsi:.1f}). Dễ đu đỉnh ngắn hạn.")
