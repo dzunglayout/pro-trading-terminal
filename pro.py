@@ -189,6 +189,68 @@ with st.expander("🔥 TÌM KIẾM CỔ PHIẾU NÓNG & CẤU HÌNH BÁO ĐỘNG
 st.markdown("---")
 
 # ==============================
+# 3.5 DANH MỤC THEO DÕI CHIẾN THUẬT (WATCHLIST)
+# ==============================
+st.markdown("---")
+with st.expander("📝 QUẢN LÝ VỊ THẾ & BÁO ĐỘNG GIÁ", expanded=True):
+    # Khởi tạo danh sách theo dõi trong bộ nhớ nếu chưa có
+    if 'my_watchlist' not in st.session_state:
+        st.session_state.my_watchlist = [] # Lưu dạng: {"symbol": "SSI", "buy_price": 35.0, "stop_loss": 33.0, "target": 40.0}
+
+    # Form thêm mã mới vào danh mục
+    with st.form("add_to_watchlist", clear_on_submit=True):
+        c1, c2, c3, c4 = st.columns(4)
+        with c1: sym_input = st.text_input("Mã CP", placeholder="SSI...").upper()
+        with c2: buy_input = st.number_input("Giá mua", min_value=0.0, step=0.1)
+        with c3: stop_input = st.number_input("Cắt lỗ", min_value=0.0, step=0.1)
+        with c4: target_input = st.number_input("Chốt lời", min_value=0.0, step=0.1)
+        
+        if st.form_submit_button("➕ Thêm vào danh mục theo dõi"):
+            if sym_input:
+                st.session_state.my_watchlist.append({
+                    "symbol": sym_input, "buy": buy_input, "stop": stop_input, "target": target_input
+                })
+                st.success(f"Đã thêm {sym_input} vào danh sách trực chiến!")
+            else:
+                st.error("Vui lòng nhập mã CP")
+
+    # Hiển thị và Quét báo động
+    if st.session_state.my_watchlist:
+        st.write("📋 **Danh mục đang trực chiến:**")
+        updated_watchlist = []
+        for item in st.session_state.my_watchlist:
+            # Lấy giá hiện tại để so sánh
+            df_current = fetch_vn_data(item['symbol'], "1d", 1)
+            if not df_current.empty:
+                current_price = float(df_current['Close'].iloc[-1])
+                status = "Normal"
+                color = "white"
+                
+                # Kiểm tra điều kiện báo động
+                if current_price <= item['stop'] and item['stop'] > 0:
+                    status = "🚨 CẮT LỖ!"
+                    color = "red"
+                    send_telegram_alert(f"⚠️ [BÁO ĐỘNG ĐỎ: {item['symbol']}]\nGiá hiện tại {current_price} đã CHẠM ĐIỂM CẮT LỖ ({item['stop']}). Sếp cần hành động ngay!")
+                elif current_price >= item['target'] and item['target'] > 0:
+                    status = "💰 CHỐT LỜI!"
+                    color = "green"
+                    send_telegram_alert(f"💎 [BÁO ĐỘNG LÃI: {item['symbol']}]\nGiá hiện tại {current_price} đã CHẠM MỤC TIÊU ({item['target']}). Chốt lãi không bao giờ sai!")
+
+                # Hiển thị dòng thông tin mã
+                col1, col2, col3, col4, col5 = st.columns([1,1,1,1,1])
+                col1.write(f"**{item['symbol']}**")
+                col2.write(f"Giá: {current_price}")
+                col3.write(f"Mua: {item['buy']}")
+                col4.write(f"Mục tiêu: {item['target']}")
+                col5.markdown(f":{color}[{status}]")
+            
+            updated_watchlist.append(item)
+            
+        if st.button("🗑️ Xóa sạch danh mục"):
+            st.session_state.my_watchlist = []
+            st.rerun()
+
+# ==============================
 # 4. GIAO DIỆN CHỌN MÃ & CHẾ ĐỘ
 # ==============================
 st.subheader("🎯 Phân tích chi tiết Điểm Vào/Ra")
@@ -306,5 +368,6 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
