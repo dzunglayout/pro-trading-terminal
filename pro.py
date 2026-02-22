@@ -13,6 +13,21 @@ import yfinance as yf
 st.set_page_config(page_title="Pro Trading Terminal", layout="wide")
 st.title("🚀 PRO TRADING TERMINAL – T+ & INTRADAY")
 
+# TẠO 2 CỘT: 1 CỘT HIỂN THỊ CHỮ, 1 CỘT CHỨA NÚT BẬT/TẮT
+    col_info, col_toggle = st.columns([2, 1])
+    
+    with col_info:
+        st.write("🤖 **Trợ lý:** Đang quét hệ thống đa tầng...")
+        
+    with col_toggle:
+        # ĐÂY CHÍNH LÀ NÚT BẠN CẦN TÌM
+        auto_alert = st.checkbox(
+            "🔔 Tự động báo siêu phẩm", 
+            value=False, 
+            key="enable_auto_telegram", # Thêm key để Streamlit không nhầm lẫn
+            help="Bật để nhận tin nhắn tự động khi có mã mới biến động mạnh."
+        )
+
 ACCOUNT_SIZE = 100_000_000  # Vốn 100 triệu VNĐ
 RISK_PERCENT = 1            # Rủi ro 1%
 ATR_MULTIPLIER = 1.5
@@ -113,13 +128,7 @@ def fetch_vn_data(symbol, interval, days_back):
 # ==============================
 st.markdown("---")
 with st.expander("🔥 TÌM KIẾM CỔ PHIẾU NÓNG & CẤU HÌNH BÁO ĐỘNG", expanded=True):
-    # Thêm nút Check để chuyển đổi trạng thái
-    col_info, col_toggle = st.columns([2, 1])
-    with col_info:
-        st.write("🤖 **Trợ lý:** Đang quét hệ thống đa tầng...")
-    with col_toggle:
-        auto_alert = st.checkbox("🔔 Tự động báo siêu phẩm", value=False, help="Nếu bật, Bot sẽ tự động nhắn tin khi phát hiện mã mới có biến động > 3%.")
-
+    
     @st.cache_data(ttl=120)
     def scan_hot_stocks():
         results = []
