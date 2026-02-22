@@ -16,17 +16,17 @@ st.title("🚀 PRO TRADING TERMINAL – T+ & INTRADAY")
 # TẠO 2 CỘT: 1 CỘT HIỂN THỊ CHỮ, 1 CỘT CHỨA NÚT BẬT/TẮT
 col_info, col_toggle = st.columns([2, 1])
     
-    with col_info:
+with col_info:
         st.write("🤖 **Trợ lý:** Đang quét hệ thống đa tầng...")
         
-    with col_toggle:
-        # ĐÂY CHÍNH LÀ NÚT BẠN CẦN TÌM
-        auto_alert = st.checkbox(
-            "🔔 Tự động báo siêu phẩm", 
-            value=False, 
-            key="enable_auto_telegram", # Thêm key để Streamlit không nhầm lẫn
-            help="Bật để nhận tin nhắn tự động khi có mã mới biến động mạnh."
-        )    
+with col_toggle:
+    # ĐÂY CHÍNH LÀ NÚT BẠN CẦN TÌM
+    auto_alert = st.checkbox(
+        "🔔 Tự động báo siêu phẩm", 
+        value=False, 
+        key="enable_auto_telegram", # Thêm key để Streamlit không nhầm lẫn
+        help="Bật để nhận tin nhắn tự động khi có mã mới biến động mạnh."
+    )
 
 ACCOUNT_SIZE = 100_000_000  # Vốn 100 triệu VNĐ
 RISK_PERCENT = 1            # Rủi ro 1%
@@ -306,4 +306,5 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
