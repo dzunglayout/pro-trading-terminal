@@ -188,67 +188,68 @@ with st.expander("🔥 TÌM KIẾM CỔ PHIẾU NÓNG & CẤU HÌNH BÁO ĐỘNG
         st.error("❌ Đang lỗi kết nối dữ liệu ở tất cả các máy chủ.")
 st.markdown("---")
 
-# ==============================
-# 3.5 DANH MỤC THEO DÕI CHIẾN THUẬT (WATCHLIST)
-# ==============================
-# st.markdown("---")
-with st.expander("📝 QUẢN LÝ VỊ THẾ & BÁO ĐỘNG GIÁ", expanded=True):
-    # Khởi tạo danh sách theo dõi trong bộ nhớ nếu chưa có
-    if 'my_watchlist' not in st.session_state:
-        st.session_state.my_watchlist = [] # Lưu dạng: {"symbol": "SSI", "buy_price": 35.0, "stop_loss": 33.0, "target": 40.0}
+from streamlit_gsheets import GSheetsConnection
 
-    # Form thêm mã mới vào danh mục
-    with st.form("add_to_watchlist", clear_on_submit=True):
-        c1, c2, c3, c4 = st.columns(4)
-        with c1: sym_input = st.text_input("Mã CP", placeholder="SSI...").upper()
-        with c2: buy_input = st.number_input("Giá mua", min_value=0.0, step=0.1)
-        with c3: stop_input = st.number_input("Cắt lỗ", min_value=0.0, step=0.1)
-        with c4: target_input = st.number_input("Chốt lời", min_value=0.0, step=0.1)
+# ==============================
+# 3.5 DANH MỤC CHIẾN THUẬT (KẾT NỐI GOOGLE SHEETS)
+# ==============================
+st.markdown("---")
+with st.expander("📊 DANH MỤC TRỰC CHIẾN (GOOGLE SHEETS LIVE)", expanded=True):
+    # Link file Google Sheets của bạn (Thay link của bạn vào đây)
+    SHEET_URL = "DÁN_LINK_GOOGLE_SHEETS_CỦA_BẠN_VÀO_ĐÂY"
+    
+    try:
+        # Kết nối với Google Sheets
+        conn = st.connection("gsheets", type=GSheetsConnection)
         
-        if st.form_submit_button("➕ Thêm vào danh mục theo dõi"):
-            if sym_input:
-                st.session_state.my_watchlist.append({
-                    "symbol": sym_input, "buy": buy_input, "stop": stop_input, "target": target_input
-                })
-                st.success(f"Đã thêm {sym_input} vào danh sách trực chiến!")
-            else:
-                st.error("Vui lòng nhập mã CP")
-
-    # Hiển thị và Quét báo động
-    if st.session_state.my_watchlist:
-        st.write("📋 **Danh mục đang trực chiến:**")
-        updated_watchlist = []
-        for item in st.session_state.my_watchlist:
-            # Lấy giá hiện tại để so sánh
-            df_current = fetch_vn_data(item['symbol'], "1d", 1)
-            if not df_current.empty:
-                current_price = float(df_current['Close'].iloc[-1])
-                status = "Normal"
-                color = "white"
+        # Đọc dữ liệu (Sử dụng ttl=60 để cập nhật lại sau mỗi 1 phút)
+        df_sheets = conn.read(spreadsheet=SHEET_URL, ttl=60)
+        
+        if not df_sheets.empty:
+            st.write("📋 **Bảng theo dõi từ Google Sheets:**")
+            final_list = []
+            
+            for index, row in df_sheets.iterrows():
+                symbol_item = str(row['symbol']).upper().strip()
+                # Lấy giá thực tế từ sàn
+                df_live = fetch_vn_data(symbol_item, "1d", 1)
+                current_p = float(df_live['Close'].iloc[-1]) if not df_live.empty else 0.0
                 
-                # Kiểm tra điều kiện báo động
-                if current_price <= item['stop'] and item['stop'] > 0:
-                    status = "🚨 CẮT LỖ!"
-                    color = "red"
-                    send_telegram_alert(f"⚠️ [BÁO ĐỘNG ĐỎ: {item['symbol']}]\nGiá hiện tại {current_price} đã CHẠM ĐIỂM CẮT LỖ ({item['stop']}). Sếp cần hành động ngay!")
-                elif current_price >= item['target'] and item['target'] > 0:
-                    status = "💰 CHỐT LỜI!"
-                    color = "green"
-                    send_telegram_alert(f"💎 [BÁO ĐỘNG LÃI: {item['symbol']}]\nGiá hiện tại {current_price} đã CHẠM MỤC TIÊU ({item['target']}). Chốt lãi không bao giờ sai!")
+                # Tính toán lời lỗ
+                buy_p = float(row['buy'])
+                pnl = ((current_p - buy_p) / buy_p * 100) if buy_p > 0 else 0
+                
+                # Cảnh báo Telegram
+                if current_p > 0:
+                    if current_p <= float(row['stop']) and float(row['stop']) > 0:
+                        send_telegram_alert(f"🚨 [CẮT LỖ] {symbol_item} chạm {current_p}!")
+                    elif current_p >= float(row['target']) and float(row['target']) > 0:
+                        send_telegram_alert(f"💰 [CHỐT LÃI] {symbol_item} chạm {current_p}!")
 
-                # Hiển thị dòng thông tin mã
-                col1, col2, col3, col4, col5 = st.columns([1,1,1,1,1])
-                col1.write(f"**{item['symbol']}**")
-                col2.write(f"Giá: {current_price}")
-                col3.write(f"Mua: {item['buy']}")
-                col4.write(f"Mục tiêu: {item['target']}")
-                col5.markdown(f":{color}[{status}]")
+                final_list.append({
+                    "Mã CP": symbol_item,
+                    "Giá Mua": buy_p,
+                    "Hiện tại": current_p,
+                    "Lời/Lỗ (%)": f"{pnl:.2f}%",
+                    "Stoploss": row['stop'],
+                    "Target": row['target']
+                })
+
+            # Hiển thị bảng
+            st.dataframe(
+                pd.DataFrame(final_list).style.map(
+                    lambda x: 'color: red' if '-' in str(x) else 'color: green', 
+                    subset=['Lời/Lỗ (%)']
+                ),
+                use_container_width=True, hide_index=True
+            )
+            st.info("💡 Bạn có thể sửa trực tiếp danh mục này trên file Google Sheets của mình.")
+        else:
+            st.warning("File Google Sheets của bạn đang trống dữ liệu.")
             
-            updated_watchlist.append(item)
-            
-        if st.button("🗑️ Xóa sạch danh mục"):
-            st.session_state.my_watchlist = []
-            st.rerun()
+    except Exception as e:
+        st.error(f"Lỗi kết nối Google Sheets: {e}")
+        st.info("Vui lòng kiểm tra lại link Google Sheets và quyền chia sẻ.")
 
 # ==============================
 # 4. GIAO DIỆN CHỌN MÃ & CHẾ ĐỘ
@@ -368,6 +369,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
