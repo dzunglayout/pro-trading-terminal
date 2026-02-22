@@ -191,7 +191,7 @@ st.markdown("---")
 # ==============================
 # 3.5 DANH MỤC THEO DÕI CHIẾN THUẬT (WATCHLIST)
 # ==============================
-st.markdown("---")
+# st.markdown("---")
 with st.expander("📝 QUẢN LÝ VỊ THẾ & BÁO ĐỘNG GIÁ", expanded=True):
     # Khởi tạo danh sách theo dõi trong bộ nhớ nếu chưa có
     if 'my_watchlist' not in st.session_state:
@@ -368,6 +368,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
