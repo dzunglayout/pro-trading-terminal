@@ -255,3 +255,19 @@ else:
     ca.info(f"**Khối lượng mua:** {shares:,} cổ")
     cb.info(f"**Vốn cần có:** {round(shares * entry * 1000, 0):,} VNĐ")
     cc.info(f"**Rủi ro cắt lỗ:** {round((entry - stop) * shares * 1000, 0):,} VNĐ")
+    # === NÚT GỬI KẾ HOẠCH THỦ CÔNG QUA TELEGRAM ===
+    st.write("") # Tạo khoảng trống
+    if st.button(f"📲 Bắn Kế hoạch lệnh {symbol} qua Telegram", use_container_width=True):
+        plan_msg = (
+            f"🎯 [KẾ HOẠCH GIAO DỊCH: {symbol}]\n"
+            f"🏢 {COMPANY_INFO.get(symbol, '')}\n"
+            f"---------------------------\n"
+            f"🟢 Điểm vào (Entry): {entry:,.2f}\n"
+            f"🔴 Cắt lỗ (Stop): {stop:,.2f} ({((stop-entry)/entry)*100:.1f}%)\n"
+            f"🍀 Chốt lời (Target): {target:,.2f} ({((target-entry)/entry)*100:.1f}%)\n"
+            f"📊 Chỉ số RSI: {current_rsi:.1f}\n"
+            f"📦 Đi tiền: Mua {shares:,} cổ (Vốn {round(shares * entry * 1000, 0):,} VNĐ)\n"
+            f"⚠️ Rủi ro tối đa: {round((entry - stop) * shares * 1000, 0):,} VNĐ"
+        )
+        send_telegram_alert(plan_msg)
+        st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
