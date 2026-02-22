@@ -186,14 +186,14 @@ with st.expander("🔥 TÌM KIẾM CỔ PHIẾU NÓNG & CẤU HÌNH BÁO ĐỘNG
             st.info("🔕 Chế độ im lặng đang bật. Bot sẽ không tự động nhắn tin.")
     else:
         st.error("❌ Đang lỗi kết nối dữ liệu ở tất cả các máy chủ.")
-st.markdown("---")
+# st.markdown("---")
 
 from streamlit_gsheets import GSheetsConnection
 
 # ==============================
 # 3.5 DANH MỤC CHIẾN THUẬT (KẾT NỐI GOOGLE SHEETS)
 # ==============================
-st.markdown("---")
+# st.markdown("---")
 with st.expander("📊 DANH MỤC TRỰC CHIẾN (GOOGLE SHEETS LIVE)", expanded=True):
     # Link file Google Sheets của bạn (Thay link của bạn vào đây)
     SHEET_URL = "https://docs.google.com/spreadsheets/d/1Dc3bHb7xKQkjDQgMNCi4JqD62DlH50EtbkMC0gIa2Yk/edit?usp=sharing"
@@ -369,6 +369,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
