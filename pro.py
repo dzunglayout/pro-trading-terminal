@@ -227,26 +227,36 @@ with st.expander("🔥 TÌM KIẾM CỔ PHIẾU NÓNG & CẤU HÌNH BÁO ĐỘNG
         best = top_stocks.iloc[0]
         st.success(f"⚡ **Mã lướt biên lớn nhất:** **{best['Mã CP']}** (Biên độ TB **{best['Biên độ (%)']}%**/ngày).")
         
-        # LOGIC TELEGRAM THÔNG MINH
+        # LOGIC TELEGRAM THÔNG MINH: SĂN ĐIỂM BREAK NỀN
         if auto_alert:
-            # Khởi tạo bộ nhớ tạm để tránh trùng mã
-            if "last_reported_stock" not in st.session_state:
-                st.session_state["last_reported_stock"] = ""
+            # Khởi tạo bộ nhớ để ghi nhớ các mã đã báo, tránh spam tin nhắn liên tục
+            if "alerted_breakouts" not in st.session_state:
+                st.session_state["alerted_breakouts"] = []
 
-            # Chỉ gửi nếu đạt biên độ và là mã MỚI so với lần báo trước
-            if float(best['Biên độ (%)']) >= 3.0:
-                if best['Mã CP'] != st.session_state["last_reported_stock"]:
-                    msg = (
-                        f"🚀 [PRO TERMINAL - PHÁT HIỆN SIÊU PHẨM]\n"
-                        f"Mã dẫn đầu danh sách: *{best['Mã CP']}*\n"
-                        f"- Giá hiện tại (Vùng mua): {best['Giá Hiện Tại']:,.2f}\n"
-                        f"- Biên độ dao động: {best['Biên độ (%)']}%\n"
-                        f"- Volume đột biến: {best['Volume Đột biến']}x\n"
-                        f"👉 Mời vào kiểm tra biểu đồ chi tiết!"
-                    )
-                    send_telegram_alert(msg)
-                    st.session_state["last_reported_stock"] = best['Mã CP']
-                    st.toast(f"Đã báo mã {best['Mã CP']} qua Telegram", icon="🔔")
+            # Lọc ra TẤT CẢ các mã có trạng thái "🚀 Vừa Break nền" trong danh sách
+            breakout_stocks = top_stocks[top_stocks['Trạng thái'] == "🚀 Vừa Break nền"]
+            
+            if not breakout_stocks.empty:
+                for _, row in breakout_stocks.iterrows():
+                    sym = row['Mã CP']
+                    
+                    # Nếu mã này CHƯA được báo trong phiên làm việc hiện tại -> Báo ngay!
+                    if sym not in st.session_state["alerted_breakouts"]:
+                        msg = (
+                            f"🚀 [TÍN HIỆU MUA: BREAK NỀN]\n"
+                            f"Hệ thống phát hiện *{sym}* vừa bứt phá!\n"
+                            f"---------------------------\n"
+                            f"- Giá hiện tại: {row['Giá Hiện Tại']:,.2f}\n"
+                            f"- Thanh khoản: {row['Hiển thị TK']} cổ\n"
+                            f"- Volume đột biến: {row['Volume Đột biến']}x so với TB\n"
+                            f"- Biến động 3 ngày: +{row['Tăng 3 Ngày (%)']:.1f}%\n"
+                            f"👉 Nền giá đang rất đẹp, sếp vào kiểm tra Chart ngay nhé!"
+                        )
+                        send_telegram_alert(msg)
+                        
+                        # Đưa mã vào danh sách "Đã báo" để lần quét sau (5 phút sau) không nhắn lại nữa
+                        st.session_state["alerted_breakouts"].append(sym)
+                        st.toast(f"Đã báo Telegram tín hiệu Break nền của {sym}!", icon="🔔")
         else:
             st.info("🔕 Chế độ im lặng đang bật. Bot sẽ không tự động nhắn tin.")
     else:
@@ -434,6 +444,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
