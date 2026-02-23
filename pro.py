@@ -278,7 +278,7 @@ def get_alert_memory():
 st.markdown("---")
 with st.expander("📊 DANH MỤC TRỰC CHIẾN (GOOGLE SHEETS LIVE)", expanded=True):
     # Link file Google Sheets của bạn
-    SHEET_URL = "DÁN_LINK_GOOGLE_SHEETS_CỦA_BẠN_VÀO_ĐÂY"
+    SHEET_URL = "https://docs.google.com/spreadsheets/d/1Dc3bHb7xKQkjDQgMNCi4JqD62DlH50EtbkMC0gIa2Yk/edit?usp=sharing"
     
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
@@ -465,6 +465,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
