@@ -389,7 +389,7 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN & TÍNH TOÁN LÃI/LỖ RÒNG",
                         c4.metric("💰 TIỀN THỰC NHẬN", f"{int(dt['thuc_nhan']):,} đ")
                         
             st.info("💡 Lưu ý: Phí giao dịch đang tính trung bình 0.15% (cả chiều mua và bán). Thuế thu nhập 0.1% tính trên chiều bán.")
-            else:
+        else:
             st.warning("File Google Sheets của bạn đang trống dữ liệu.")
             
     except Exception as e:
@@ -514,6 +514,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
