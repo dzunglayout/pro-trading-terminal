@@ -57,15 +57,19 @@ ALL_SYMBOLS.sort()
 # 2. HÀM TELEGRAM & LẤY DỮ LIỆU
 # ==============================
 def send_telegram_alert(message):
-    # !!! BẠN HÃY THAY 2 DÒNG DƯỚI ĐÂY BẰNG TOKEN VÀ ID CỦA BẠN !!!
-    bot_token = "8563387783:AAEh9DwH_iTHYsF7TihlsgKR4BmnMZfRVYI"
-    bot_chatID = "1972517879"
-    
-    if bot_token == "ĐIỀN_TOKEN_CỦA_BẠN_VÀO_ĐÂY": return # Bỏ qua nếu chưa điền
-    
+    # Lấy thông tin từ "két sắt" của Streamlit
+    try:
+        bot_token = st.secrets["TELEGRAM_TOKEN"]
+        bot_chatID = st.secrets["TELEGRAM_CHAT_ID"]
+    except KeyError:
+        st.error("⚠️ Lỗi: Chưa cấu hình Token hoặc Chat ID trong file Secrets!")
+        return
+
     send_text = f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={bot_chatID}&parse_mode=Markdown&text={message}"
-    try: requests.get(send_text, timeout=5)
-    except: pass
+    try: 
+        requests.get(send_text, timeout=5)
+    except: 
+        pass
 
 def fetch_vn_data(symbol, interval, days_back):
     res_map = {"1d": "1D", "15m": "15"}
@@ -370,6 +374,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
