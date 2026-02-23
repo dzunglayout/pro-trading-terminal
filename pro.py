@@ -268,33 +268,34 @@ from streamlit_gsheets import GSheetsConnection
 # ==============================
 # 3.5 DANH MỤC CHIẾN THUẬT (KẾT NỐI GOOGLE SHEETS)
 # ==============================
-# st.markdown("---")
+from streamlit_gsheets import GSheetsConnection
+
+# 1. TẠO BỘ NHỚ VĨNH VIỄN CHỐNG SPAM (Không bị mất khi F5)
+@st.cache_resource
+def get_alert_memory():
+    return {}
+
+st.markdown("---")
 with st.expander("📊 DANH MỤC TRỰC CHIẾN (GOOGLE SHEETS LIVE)", expanded=True):
-    # Link file Google Sheets của bạn (Thay link của bạn vào đây)
-    SHEET_URL = "https://docs.google.com/spreadsheets/d/1Dc3bHb7xKQkjDQgMNCi4JqD62DlH50EtbkMC0gIa2Yk/edit?usp=sharing"
+    # Link file Google Sheets của bạn
+    SHEET_URL = "DÁN_LINK_GOOGLE_SHEETS_CỦA_BẠN_VÀO_ĐÂY"
     
     try:
-        # Kết nối với Google Sheets
         conn = st.connection("gsheets", type=GSheetsConnection)
-        
-        # Đọc dữ liệu (Sử dụng ttl=60 để cập nhật lại sau mỗi 1 phút)
         df_sheets = conn.read(spreadsheet=SHEET_URL, ttl=60)
         
         if not df_sheets.empty:
             st.write("📋 **Bảng theo dõi từ Google Sheets:**")
             final_list = []
             
-            # Khởi tạo bộ nhớ lưu "Giá đã báo lần cuối" để chống Spam
-            if "last_alert_prices" not in st.session_state:
-                st.session_state["last_alert_prices"] = {}
+            # 2. GỌI BỘ NHỚ VĨNH VIỄN RA SỬ DỤNG
+            alert_memory = get_alert_memory()
             
             for index, row in df_sheets.iterrows():
                 symbol_item = str(row['symbol']).upper().strip()
-                # Lấy giá thực tế từ sàn
                 df_live = fetch_vn_data(symbol_item, "1d", 1)
                 current_p = float(df_live['Close'].iloc[-1]) if not df_live.empty else 0.0
                 
-                # Tính toán lời lỗ
                 buy_p = float(row['buy'])
                 pnl = ((current_p - buy_p) / buy_p * 100) if buy_p > 0 else 0
                 
@@ -311,20 +312,17 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN (GOOGLE SHEETS LIVE)", expanded
                         alert_msg = f"💰 [CHỐT LÃI] {symbol_item} chạm giá {current_p:,.2f}!"
 
                     if is_alerting:
-                        # Kiểm tra xem giá này đã báo trước đó chưa
-                        last_price = st.session_state["last_alert_prices"].get(symbol_item)
+                        # Kiểm tra xem giá này đã báo trước đó chưa (Dùng bộ nhớ vĩnh viễn)
+                        last_price = alert_memory.get(symbol_item)
                         
-                        # Chỉ gửi tin nếu giá khác với giá của tin nhắn trước đó
                         if current_p != last_price:
                             send_telegram_alert(alert_msg)
-                            # Lưu lại giá vừa báo vào bộ nhớ
-                            st.session_state["last_alert_prices"][symbol_item] = current_p
+                            alert_memory[symbol_item] = current_p
                     else:
-                        # Nếu giá phục hồi về vùng an toàn, xóa trí nhớ để lỡ rớt lại nó vẫn báo
-                        if symbol_item in st.session_state["last_alert_prices"]:
-                            del st.session_state["last_alert_prices"][symbol_item]
+                        # Hồi phục thì xóa trí nhớ
+                        if symbol_item in alert_memory:
+                            del alert_memory[symbol_item]
 
-                # Thêm vào danh sách hiển thị trên web
                 final_list.append({
                     "Mã CP": symbol_item,
                     "Giá Mua": buy_p,
@@ -334,7 +332,6 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN (GOOGLE SHEETS LIVE)", expanded
                     "Target": row['target']
                 })
 
-            # Hiển thị bảng
             st.dataframe(
                 pd.DataFrame(final_list).style.map(
                     lambda x: 'color: red' if '-' in str(x) else 'color: green', 
@@ -349,7 +346,7 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN (GOOGLE SHEETS LIVE)", expanded
     except Exception as e:
         st.error(f"Lỗi kết nối Google Sheets: {e}")
         st.info("Vui lòng kiểm tra lại link Google Sheets và quyền chia sẻ.")
-
+ 
 # ==============================
 # 4. GIAO DIỆN CHỌN MÃ & CHẾ ĐỘ
 # ==============================
@@ -468,6 +465,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
