@@ -280,7 +280,69 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN (GOOGLE SHEETS LIVE)", expanded
         # Đọc dữ liệu (Sử dụng ttl=60 để cập nhật lại sau mỗi 1 phút)
         df_sheets = conn.read(spreadsheet=SHEET_URL, ttl=60)
         
-        for index, row in df_sheets.iterrows()
+        if not df_sheets.empty:
+            st.write("📋 **Bảng theo dõi từ Google Sheets:**")
+            final_list = []
+            
+            # Khởi tạo bộ nhớ lưu "Giá đã báo lần cuối" để chống Spam
+            if "last_alert_prices" not in st.session_state:
+                st.session_state["last_alert_prices"] = {}
+            
+            for index, row in df_sheets.iterrows():
+                symbol_item = str(row['symbol']).upper().strip()
+                # Lấy giá thực tế từ sàn
+                df_live = fetch_vn_data(symbol_item, "1d", 1)
+                current_p = float(df_live['Close'].iloc[-1]) if not df_live.empty else 0.0
+                
+                # Tính toán lời lỗ
+                buy_p = float(row['buy'])
+                pnl = ((current_p - buy_p) / buy_p * 100) if buy_p > 0 else 0
+                
+                # --- LOGIC CẢNH BÁO CHỐNG SPAM ---
+                if current_p > 0:
+                    is_alerting = False
+                    alert_msg = ""
+                    
+                    if current_p <= float(row['stop']) and float(row['stop']) > 0:
+                        is_alerting = True
+                        alert_msg = f"🚨 [CẮT LỖ] {symbol_item} chạm giá {current_p:,.2f}!"
+                    elif current_p >= float(row['target']) and float(row['target']) > 0:
+                        is_alerting = True
+                        alert_msg = f"💰 [CHỐT LÃI] {symbol_item} chạm giá {current_p:,.2f}!"
+
+                    if is_alerting:
+                        # Kiểm tra xem giá này đã báo trước đó chưa
+                        last_price = st.session_state["last_alert_prices"].get(symbol_item)
+                        
+                        # Chỉ gửi tin nếu giá khác với giá của tin nhắn trước đó
+                        if current_p != last_price:
+                            send_telegram_alert(alert_msg)
+                            # Lưu lại giá vừa báo vào bộ nhớ
+                            st.session_state["last_alert_prices"][symbol_item] = current_p
+                    else:
+                        # Nếu giá phục hồi về vùng an toàn, xóa trí nhớ để lỡ rớt lại nó vẫn báo
+                        if symbol_item in st.session_state["last_alert_prices"]:
+                            del st.session_state["last_alert_prices"][symbol_item]
+
+                # Thêm vào danh sách hiển thị trên web
+                final_list.append({
+                    "Mã CP": symbol_item,
+                    "Giá Mua": buy_p,
+                    "Hiện tại": current_p,
+                    "Lời/Lỗ (%)": f"{pnl:.2f}%",
+                    "Stoploss": row['stop'],
+                    "Target": row['target']
+                })
+
+            # Hiển thị bảng
+            st.dataframe(
+                pd.DataFrame(final_list).style.map(
+                    lambda x: 'color: red' if '-' in str(x) else 'color: green', 
+                    subset=['Lời/Lỗ (%)']
+                ),
+                use_container_width=True, hide_index=True
+            )
+            st.info("💡 Bạn có thể sửa trực tiếp danh mục này trên file Google Sheets của mình.")
         else:
             st.warning("File Google Sheets của bạn đang trống dữ liệu.")
             
@@ -406,6 +468,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
