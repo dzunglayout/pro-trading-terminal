@@ -350,7 +350,7 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN (GOOGLE SHEETS LIVE)", expanded
 # ==============================
 # 4. GIAO DIỆN CHỌN MÃ & CHẾ ĐỘ
 # ==============================
-st.subheader("🎯 Phân tích chi tiết Điểm Vào/Ra")
+st.subheader("Phân tích chi tiết Điểm Vào/Ra")
 col_mode, col_sym = st.columns([1, 1])
 with col_mode:
     mode = st.radio("Chọn chế độ giao dịch:", ["T+ Swing", "Intraday"], horizontal=True)
@@ -428,7 +428,7 @@ fig.update_xaxes(rangebreaks=[dict(bounds=["sat", "mon"])])
 fig.update_layout(height=650, xaxis_rangeslider_visible=False, template="plotly_dark", margin=dict(l=20, r=20, t=40, b=20))
 st.plotly_chart(fig, use_container_width=True)
 
-st.subheader("💡 Kế hoạch Giao dịch (Trading Plan)")
+st.subheader("Kế hoạch Giao dịch (Trading Plan)")
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Giá Hiện Tại (Entry)", f"{entry:,.2f}")
 c2.metric("Chốt Lời (Target)", f"{target:,.2f}", f"+{(target-entry)/entry*100:.1f}%")
@@ -436,7 +436,7 @@ c3.metric("Cắt Lỗ (Stop)", f"{stop:,.2f}", f"{(stop-entry)/entry*100:.1f}%")
 c4.metric("RSI Hiện tại", f"{current_rsi:.1f}")
 
 st.divider()
-st.markdown("### 🤖 Trợ lý phân tích")
+st.markdown("### Trợ lý phân tích")
 if shares == 0: st.error("⚠️ **Cảnh báo:** Rủi ro quá lớn hoặc vốn không đủ mua 1 lô (100 cổ).")
 else:
     if current_rsi > 70: st.warning(f"⚠️ **Cẩn thận:** RSI quá mua ({current_rsi:.1f}). Dễ đu đỉnh ngắn hạn.")
@@ -465,6 +465,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
