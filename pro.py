@@ -11,13 +11,13 @@ import yfinance as yf
 # 1. CẤU HÌNH BAN ĐẦU & TỪ ĐIỂN
 # ==============================
 st.set_page_config(page_title="Pro Trading Terminal", layout="wide")
-st.title("🚀 PRO TRADING TERMINAL – T+ & INTRADAY")
+st.title("PRO TRADING TERMINAL – T+ & INTRADAY")
 
 # TẠO 2 CỘT: 1 CỘT HIỂN THỊ CHỮ, 1 CỘT CHỨA NÚT BẬT/TẮT
 col_info, col_toggle = st.columns([2, 1])
     
 with col_info:
-        st.write("🤖 **Trợ lý:** Đang quét hệ thống đa tầng...")
+        st.write("**Trợ lý:** Đang quét hệ thống đa tầng...")
         
 with col_toggle:
     # ĐÂY CHÍNH LÀ NÚT BẠN CẦN TÌM
@@ -175,9 +175,10 @@ with st.expander("🔥 TÌM KIẾM CỔ PHIẾU NÓNG & CẤU HÌNH BÁO ĐỘNG
                     msg = (
                         f"🚀 [PRO TERMINAL - PHÁT HIỆN SIÊU PHẨM]\n"
                         f"Mã dẫn đầu danh sách: *{best['Mã CP']}*\n"
+                        f"- Giá hiện tại (Vùng mua): {best['Giá Hiện Tại']:,.2f}\n"
                         f"- Biên độ dao động: {best['Biên độ (%)']}%\n"
                         f"- Volume đột biến: {best['Volume Đột biến']}x\n"
-                        f"👉 Mời sếp vào kiểm tra biểu đồ chi tiết!"
+                        f"👉 Mời vào kiểm tra biểu đồ chi tiết!"
                     )
                     send_telegram_alert(msg)
                     st.session_state["last_reported_stock"] = best['Mã CP']
@@ -369,6 +370,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
