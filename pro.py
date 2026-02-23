@@ -280,45 +280,7 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN (GOOGLE SHEETS LIVE)", expanded
         # Đọc dữ liệu (Sử dụng ttl=60 để cập nhật lại sau mỗi 1 phút)
         df_sheets = conn.read(spreadsheet=SHEET_URL, ttl=60)
         
-        if not df_sheets.empty:
-            st.write("📋 **Bảng theo dõi từ Google Sheets:**")
-            final_list = []
-            
-            for index, row in df_sheets.iterrows():
-                symbol_item = str(row['symbol']).upper().strip()
-                # Lấy giá thực tế từ sàn
-                df_live = fetch_vn_data(symbol_item, "1d", 1)
-                current_p = float(df_live['Close'].iloc[-1]) if not df_live.empty else 0.0
-                
-                # Tính toán lời lỗ
-                buy_p = float(row['buy'])
-                pnl = ((current_p - buy_p) / buy_p * 100) if buy_p > 0 else 0
-                
-                # Cảnh báo Telegram
-                if current_p > 0:
-                    if current_p <= float(row['stop']) and float(row['stop']) > 0:
-                        send_telegram_alert(f"🚨 [CẮT LỖ] {symbol_item} chạm {current_p}!")
-                    elif current_p >= float(row['target']) and float(row['target']) > 0:
-                        send_telegram_alert(f"💰 [CHỐT LÃI] {symbol_item} chạm {current_p}!")
-
-                final_list.append({
-                    "Mã CP": symbol_item,
-                    "Giá Mua": buy_p,
-                    "Hiện tại": current_p,
-                    "Lời/Lỗ (%)": f"{pnl:.2f}%",
-                    "Stoploss": row['stop'],
-                    "Target": row['target']
-                })
-
-            # Hiển thị bảng
-            st.dataframe(
-                pd.DataFrame(final_list).style.map(
-                    lambda x: 'color: red' if '-' in str(x) else 'color: green', 
-                    subset=['Lời/Lỗ (%)']
-                ),
-                use_container_width=True, hide_index=True
-            )
-            st.info("💡 Bạn có thể sửa trực tiếp danh mục này trên file Google Sheets của mình.")
+        for index, row in df_sheets.iterrows()
         else:
             st.warning("File Google Sheets của bạn đang trống dữ liệu.")
             
@@ -444,6 +406,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
