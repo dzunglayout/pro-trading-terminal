@@ -349,7 +349,7 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN & TÍNH TOÁN LÃI/LỖ RÒNG",
                     "Target": row['target']
                 })
 
-            st.write("📋 **Bảng theo dõi tổng quan:**")
+            st.write("**Bảng theo dõi tổng quan:**")
             st.dataframe(
                 pd.DataFrame(final_list).style.map(
                     lambda x: 'color: red' if '-' in str(x) else 'color: green', 
@@ -361,7 +361,7 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN & TÍNH TOÁN LÃI/LỖ RÒNG",
             # ==========================================
             # KHU VỰC BÓC TÁCH THUẾ PHÍ THEO TỪNG MÃ
             # ==========================================
-            st.markdown("### 🔍 Phân tích Lãi/Lỗ Thực Nhận (Sau Thuế Phí)")
+            st.markdown("Phân tích Lãi/Lỗ Thực Nhận (Sau Thuế Phí)")
             list_ma = list(portfolio_details.keys())
             
             if list_ma:
@@ -514,6 +514,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
