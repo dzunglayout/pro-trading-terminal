@@ -497,8 +497,25 @@ else:
     ca.info(f"**Khối lượng mua:** {shares:,} cổ")
     cb.info(f"**Vốn cần có:** {round(shares * entry * 1000, 0):,} VNĐ")
     cc.info(f"**Rủi ro cắt lỗ:** {round((entry - stop) * shares * 1000, 0):,} VNĐ")
-    # === NÚT GỬI KẾ HOẠCH THỦ CÔNG QUA TELEGRAM ===
+    
+    # === NÚT GỬI KẾ HOẠCH THỦ CÔNG QUA TELEGRAM (CÓ THUẾ PHÍ) ===
     st.write("") # Tạo khoảng trống
+    
+    # 1. TÍNH TOÁN KỊCH BẢN THUẾ PHÍ (Dựa trên Phí 0.15%/chiều và Thuế 0.1% lúc bán)
+    von_mua = shares * entry * 1000
+    phi_mua = von_mua * 0.0015
+    
+    # Kịch bản Thắng (Chạm Target)
+    von_ban_win = shares * target * 1000
+    thue_phi_win = phi_mua + (von_ban_win * 0.0025) # Phí bán 0.15% + Thuế 0.1% = 0.25%
+    lai_rong = (von_ban_win - von_mua) - thue_phi_win
+    
+    # Kịch bản Thua (Chạm Stoploss)
+    von_ban_loss = shares * stop * 1000
+    thue_phi_loss = phi_mua + (von_ban_loss * 0.0025)
+    lo_rong = (von_mua - von_ban_loss) + thue_phi_loss
+
+    # 2. HIỂN THỊ NÚT BẤM VÀ GỬI TELEGRAM
     if st.button(f"📲 Bắn Kế hoạch lệnh {symbol} qua Telegram", use_container_width=True):
         plan_msg = (
             f"🎯 [KẾ HOẠCH GIAO DỊCH: {symbol}]\n"
@@ -508,12 +525,15 @@ else:
             f"🔴 Cắt lỗ (Stop): {stop:,.2f} ({((stop-entry)/entry)*100:.1f}%)\n"
             f"🍀 Chốt lời (Target): {target:,.2f} ({((target-entry)/entry)*100:.1f}%)\n"
             f"📊 Chỉ số RSI: {current_rsi:.1f}\n"
-            f"📦 Đi tiền: Mua {shares:,} cổ (Vốn {round(shares * entry * 1000, 0):,} VNĐ)\n"
-            f"⚠️ Rủi ro tối đa: {round((entry - stop) * shares * 1000, 0):,} VNĐ"
+            f"---------------------------\n"
+            f"📦 Đi tiền: Mua {shares:,} cổ (Vốn {von_mua:,.0f} đ)\n"
+            f"💸 Ước tính Thuế/Phí: {thue_phi_win:,.0f} đ\n"
+            f"💎 LÃI RÒNG (nếu Win): +{lai_rong:,.0f} đ\n"
+            f"⚠️ LỖ RÒNG (nếu Fail): -{lo_rong:,.0f} đ"
         )
         send_telegram_alert(plan_msg)
-
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
