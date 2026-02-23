@@ -137,44 +137,47 @@ with st.expander("🔥 TÌM KIẾM CỔ PHIẾU NÓNG & CẤU HÌNH BÁO ĐỘNG
     def scan_hot_stocks():
         results = []
         for sym in SCAN_WATCHLIST:
-            # Lấy 30 ngày để đủ tính EMA20 và lịch sử 3 ngày trước
-            df_scan = fetch_vn_data(sym, "1d", 30) 
-            if df_scan.empty or len(df_scan) < 20: continue
+            # SỬA LỖI Ở ĐÂY: Lấy 60 ngày để bao trọn cả T7, CN và các dịp Lễ
+            df_scan = fetch_vn_data(sym, "1d", 60) 
+            
+            # Cần tối thiểu 25 phiên giao dịch thực tế để đường EMA20 chạy mượt
+            if df_scan.empty or len(df_scan) < 25: 
+                continue
             
             try:
                 current_price = float(df_scan['Close'].iloc[-1])
                 
-                # ✅ 1. BỘ LỌC PENNY RÁC: Bỏ qua các mã có giá dưới 10 (tức là < 10.000 VNĐ)
+                # ✅ 1. BỘ LỌC PENNY RÁC: Dưới 10k thì bỏ qua
                 if current_price < 10.0:
                     continue
 
-                avg_vol = df_scan['Volume'].tail(15).mean()
+                avg_vol = float(df_scan['Volume'].tail(15).mean())
                 vol_today = float(df_scan['Volume'].iloc[-1])
                 
                 # ✅ 2. ĐÁNH GIÁ THANH KHOẢN (> 3 Triệu cổ)
                 is_high_liquidity = avg_vol >= 3000000
                 vol_icon = "🔥 " if is_high_liquidity else ""
                 
-                # ✅ 3. BIẾN ĐỘNG GIÁ 3 NGÀY QUẢ (Không quá 10%)
+                # ✅ 3. BIẾN ĐỘNG GIÁ 3 NGÀY QUA
                 price_3d_ago = float(df_scan['Close'].iloc[-4])
                 change_3d = ((current_price - price_3d_ago) / price_3d_ago) * 100
                 
-                # ✅ 4. TRẠNG THÁI: Tích lũy hay Vừa Break?
-                ema20 = df_scan['Close'].ewm(span=20, adjust=False).mean().iloc[-1]
+                # ✅ 4. TRẠNG THÁI: Tích lũy hay Break?
+                ema20 = float(df_scan['Close'].ewm(span=20, adjust=False).mean().iloc[-1])
                 
                 if change_3d > 10:
-                    status = "🔴 Đã chạy xa (>10%)"
+                    status = "🔴 Đã chạy xa"
                 elif current_price > ema20 and vol_today > (avg_vol * 1.5) and change_3d <= 7:
                     status = "🚀 Vừa Break nền"
                 elif abs(current_price - ema20) / ema20 < 0.03 and abs(change_3d) < 4:
                     status = "🟡 Đang tích lũy"
                 elif current_price < ema20:
-                    status = "🔻 Yếu (Dưới EMA20)"
+                    status = "🔻 Dưới EMA20"
                 else:
                     status = "⚪ Nhịp thường"
 
                 # Tính biên độ phiên nay
-                volatility = (df_scan['High'].iloc[-1] - df_scan['Low'].iloc[-1]) / df_scan['Low'].iloc[-1] * 100
+                volatility = float((df_scan['High'].iloc[-1] - df_scan['Low'].iloc[-1]) / df_scan['Low'].iloc[-1] * 100)
 
                 results.append({
                     "Mã CP": sym,
@@ -186,18 +189,14 @@ with st.expander("🔥 TÌM KIẾM CỔ PHIẾU NÓNG & CẤU HÌNH BÁO ĐỘNG
                     "Volume Đột biến": round(vol_today / avg_vol, 1) if avg_vol > 0 else 0,
                     "Biên độ (%)": volatility
                 })
-            except Exception as e: continue
+            except Exception as e: 
+                continue # Nếu mã nào bị lỗi dữ liệu bất thường thì âm thầm bỏ qua
             
         df_res = pd.DataFrame(results)
         if not df_res.empty:
-            # Ưu tiên xếp các mã Vừa Break hoặc Tích lũy lên đầu, sau đó ưu tiên Thanh khoản
             df_res['Sort_Priority'] = df_res['Trạng thái'].apply(lambda x: 1 if "Break" in x else (2 if "tích lũy" in x else 3))
             df_res = df_res.sort_values(by=["Sort_Priority", "Thanh khoản TB"], ascending=[True, False])
             
-            # Bỏ cột hỗ trợ sort đi trước khi hiển thị
-            df_res = df_res.drop(columns=["Sort_Priority", "Thanh khoản TB"])
-            
-            # Sắp xếp lại thứ tự cột cho dễ nhìn
             cols_order = ["Mã CP", "Trạng thái", "Giá Hiện Tại", "Tăng 3 Ngày (%)", "Hiển thị TK", "Volume Đột biến", "Biên độ (%)"]
             df_res = df_res[cols_order]
             
@@ -435,6 +434,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
