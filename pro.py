@@ -266,18 +266,17 @@ with st.expander("🔥 TÌM KIẾM CỔ PHIẾU NÓNG & CẤU HÌNH BÁO ĐỘNG
 from streamlit_gsheets import GSheetsConnection
 
 # ==============================
-# 3.5 DANH MỤC CHIẾN THUẬT (KẾT NỐI GOOGLE SHEETS)
+# 3.5 DANH MỤC TRỰC CHIẾN & TÍNH TOÁN THUẾ PHÍ
 # ==============================
 from streamlit_gsheets import GSheetsConnection
 
-# 1. TẠO BỘ NHỚ VĨNH VIỄN CHỐNG SPAM (Không bị mất khi F5)
 @st.cache_resource
 def get_alert_memory():
     return {}
 
 st.markdown("---")
-with st.expander("📊 DANH MỤC TRỰC CHIẾN (GOOGLE SHEETS LIVE)", expanded=True):
-    # Link file Google Sheets của bạn
+with st.expander("📊 DANH MỤC TRỰC CHIẾN & TÍNH TOÁN LÃI/LỖ RÒNG", expanded=True):
+    # Dán link Google Sheets của bạn vào đây
     SHEET_URL = "https://docs.google.com/spreadsheets/d/1Dc3bHb7xKQkjDQgMNCi4JqD62DlH50EtbkMC0gIa2Yk/edit?usp=sharing"
     
     try:
@@ -285,25 +284,25 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN (GOOGLE SHEETS LIVE)", expanded
         df_sheets = conn.read(spreadsheet=SHEET_URL, ttl=60)
         
         if not df_sheets.empty:
-            st.write("📋 **Bảng theo dõi từ Google Sheets:**")
             final_list = []
-            
-            # 2. GỌI BỘ NHỚ VĨNH VIỄN RA SỬ DỤNG
+            portfolio_details = {} # Kho lưu trữ chi tiết để tính Thuế/Phí
             alert_memory = get_alert_memory()
             
             for index, row in df_sheets.iterrows():
                 symbol_item = str(row['symbol']).upper().strip()
+                # Lấy dữ liệu an toàn, nếu cột volume chưa có thì mặc định là 0
+                vol = float(row.get('volume', 0)) 
+                
                 df_live = fetch_vn_data(symbol_item, "1d", 1)
                 current_p = float(df_live['Close'].iloc[-1]) if not df_live.empty else 0.0
                 
                 buy_p = float(row['buy'])
-                pnl = ((current_p - buy_p) / buy_p * 100) if buy_p > 0 else 0
+                pnl_percent = ((current_p - buy_p) / buy_p * 100) if buy_p > 0 else 0
                 
-                # --- LOGIC CẢNH BÁO CHỐNG SPAM ---
+                # --- LOGIC CẢNH BÁO CHỐNG SPAM (Giữ nguyên) ---
                 if current_p > 0:
                     is_alerting = False
                     alert_msg = ""
-                    
                     if current_p <= float(row['stop']) and float(row['stop']) > 0:
                         is_alerting = True
                         alert_msg = f"🚨 [CẮT LỖ] {symbol_item} chạm giá {current_p:,.2f}!"
@@ -312,26 +311,45 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN (GOOGLE SHEETS LIVE)", expanded
                         alert_msg = f"💰 [CHỐT LÃI] {symbol_item} chạm giá {current_p:,.2f}!"
 
                     if is_alerting:
-                        # Kiểm tra xem giá này đã báo trước đó chưa (Dùng bộ nhớ vĩnh viễn)
                         last_price = alert_memory.get(symbol_item)
-                        
                         if current_p != last_price:
                             send_telegram_alert(alert_msg)
                             alert_memory[symbol_item] = current_p
                     else:
-                        # Hồi phục thì xóa trí nhớ
                         if symbol_item in alert_memory:
                             del alert_memory[symbol_item]
 
+                # --- TÍNH TOÁN TIỀN TỆ (Thuế 0.1%, Phí ~0.15%) ---
+                # Lưu ý: Giá trên web đang hiển thị theo đơn vị "Nghìn đồng" (Ví dụ: 35.0 = 35,000 VNĐ)
+                gia_tri_mua = buy_p * vol * 1000
+                phi_mua = gia_tri_mua * 0.0015
+                
+                gia_tri_ban = current_p * vol * 1000
+                phi_ban = gia_tri_ban * 0.0015
+                thue_ban = gia_tri_ban * 0.0010
+                
+                tong_thue_phi = phi_mua + phi_ban + thue_ban
+                thuc_nhan = gia_tri_ban - phi_ban - thue_ban
+                lai_lo_rong = thuc_nhan - (gia_tri_mua + phi_mua)
+
+                # Lưu vào kho chi tiết
+                portfolio_details[symbol_item] = {
+                    "vol": vol, "buy_p": buy_p, "current_p": current_p,
+                    "tong_thue_phi": tong_thue_phi, "thuc_nhan": thuc_nhan, "lai_lo_rong": lai_lo_rong
+                }
+
+                # Dữ liệu cho Bảng tổng quan
                 final_list.append({
                     "Mã CP": symbol_item,
+                    "Khối lượng": f"{int(vol):,}",
                     "Giá Mua": buy_p,
                     "Hiện tại": current_p,
-                    "Lời/Lỗ (%)": f"{pnl:.2f}%",
+                    "Lời/Lỗ (%)": f"{pnl_percent:.2f}%",
                     "Stoploss": row['stop'],
                     "Target": row['target']
                 })
 
+            st.write("📋 **Bảng theo dõi tổng quan:**")
             st.dataframe(
                 pd.DataFrame(final_list).style.map(
                     lambda x: 'color: red' if '-' in str(x) else 'color: green', 
@@ -339,8 +357,39 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN (GOOGLE SHEETS LIVE)", expanded
                 ),
                 use_container_width=True, hide_index=True
             )
-            st.info("💡 Bạn có thể sửa trực tiếp danh mục này trên file Google Sheets của mình.")
-        else:
+            
+            # ==========================================
+            # KHU VỰC BÓC TÁCH THUẾ PHÍ THEO TỪNG MÃ
+            # ==========================================
+            st.markdown("### 🔍 Phân tích Lãi/Lỗ Thực Nhận (Sau Thuế Phí)")
+            list_ma = list(portfolio_details.keys())
+            
+            if list_ma:
+                # Tạo thanh chọn mã CP
+                selected_sym = st.selectbox("👉 Chọn mã CP trong danh mục để xem chi tiết:", list_ma)
+                
+                if selected_sym:
+                    dt = portfolio_details[selected_sym]
+                    if dt['vol'] == 0:
+                        st.warning(f"Vui lòng nhập số lượng (volume) cho mã {selected_sym} vào Google Sheets để tính toán.")
+                    else:
+                        st.write(f"Đang phân tích: **{selected_sym}** (Đang nắm giữ: {int(dt['vol']):,} cổ phiếu)")
+                        
+                        # Hiển thị 4 cột Metric (Chỉ số) cực đẹp
+                        c1, c2, c3, c4 = st.columns(4)
+                        c1.metric("Vốn bỏ ra ban đầu", f"{int(dt['buy_p'] * dt['vol'] * 1000):,} đ")
+                        c2.metric("Tổng Thuế & Phí (2 chiều)", f"-{int(dt['tong_thue_phi']):,} đ")
+                        
+                        # Đổi màu Lãi/Lỗ Ròng
+                        if dt['lai_lo_rong'] >= 0:
+                            c3.metric("LÃI RÒNG (Bỏ túi)", f"+{int(dt['lai_lo_rong']):,} đ", "Có Lời")
+                        else:
+                            c3.metric("LỖ RÒNG", f"{int(dt['lai_lo_rong']):,} đ", "-Lỗ")
+                            
+                        c4.metric("💰 TIỀN THỰC NHẬN", f"{int(dt['thuc_nhan']):,} đ")
+                        
+            st.info("💡 Lưu ý: Phí giao dịch đang tính trung bình 0.15% (cả chiều mua và bán). Thuế thu nhập 0.1% tính trên chiều bán.")
+            else:
             st.warning("File Google Sheets của bạn đang trống dữ liệu.")
             
     except Exception as e:
@@ -465,6 +514,7 @@ else:
         send_telegram_alert(plan_msg)
 
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
