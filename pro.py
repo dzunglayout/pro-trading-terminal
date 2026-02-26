@@ -266,17 +266,17 @@ with st.expander("🔥 TÌM KIẾM CỔ PHIẾU NÓNG & CẤU HÌNH BÁO ĐỘNG
 from streamlit_gsheets import GSheetsConnection
 
 # ==============================
-# 3.5 DANH MỤC TRỰC CHIẾN & TÍNH TOÁN THUẾ PHÍ
+# 3.5 DANH MỤC TRỰC CHIẾN, TÍNH THUẾ PHÍ & NHẬT KÝ (LOGS)
 # ==============================
 from streamlit_gsheets import GSheetsConnection
+from datetime import datetime, timedelta
 
 @st.cache_resource
 def get_alert_memory():
     return {}
 
 st.markdown("---")
-with st.expander("📊 DANH MỤC TRỰC CHIẾN & TÍNH TOÁN LÃI/LỖ RÒNG", expanded=True):
-    # Dán link Google Sheets của bạn vào đây
+with st.expander("📊 DANH MỤC TRỰC CHIẾN & NHẬT KÝ LỆNH", expanded=True):
     SHEET_URL = "https://docs.google.com/spreadsheets/d/1Dc3bHb7xKQkjDQgMNCi4JqD62DlH50EtbkMC0gIa2Yk/edit?usp=sharing"
     
     try:
@@ -285,62 +285,71 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN & TÍNH TOÁN LÃI/LỖ RÒNG",
         
         if not df_sheets.empty:
             final_list = []
-            portfolio_details = {} # Kho lưu trữ chi tiết để tính Thuế/Phí
+            portfolio_details = {} # Kho lưu trữ chi tiết Thuế/Phí
+            new_logs_to_write = [] # Rổ chứa nhật ký
             alert_memory = get_alert_memory()
             
             for index, row in df_sheets.iterrows():
                 symbol_item = str(row['symbol']).upper().strip()
-                # Lấy dữ liệu an toàn, nếu cột volume chưa có thì mặc định là 0
-                vol = float(row.get('volume', 0)) 
+                vol = float(row.get('volume', 0))
                 
                 df_live = fetch_vn_data(symbol_item, "1d", 1)
                 current_p = float(df_live['Close'].iloc[-1]) if not df_live.empty else 0.0
                 
                 buy_p = float(row['buy'])
-                pnl_percent = ((current_p - buy_p) / buy_p * 100) if buy_p > 0 else 0
+                pnl = ((current_p - buy_p) / buy_p * 100) if buy_p > 0 else 0
+                pnl_str = f"LÃI +{pnl:.2f}%" if pnl >= 0 else f"LỖ {pnl:.2f}%"
                 
-                # --- LOGIC CẢNH BÁO & SO SÁNH LỊCH SỬ GIÁ ---
+                # --- 1. LOGIC CẢNH BÁO TELEGRAM & LƯU LOG ---
                 if current_p > 0:
                     is_alerting = False
-                    alert_msg = ""
+                    alert_base_msg = ""
+                    action_type = ""
                     
                     if current_p <= float(row['stop']) and float(row['stop']) > 0:
                         is_alerting = True
-                        alert_msg = f"🚨 [VÙNG CẮT LỖ] {symbol_item} đang ở mức {current_p:,.2f}!"
+                        action_type = "🚨 CẮT LỖ"
+                        alert_base_msg = f"{action_type} {symbol_item} ở mức {current_p:,.2f} ({pnl_str})!"
                     elif current_p >= float(row['target']) and float(row['target']) > 0:
                         is_alerting = True
-                        alert_msg = f"💰 [VÙNG CHỐT LÃI] {symbol_item} đang ở mức {current_p:,.2f}!"
+                        action_type = "💰 CHỐT LÃI"
+                        alert_base_msg = f"{action_type} {symbol_item} ở mức {current_p:,.2f} ({pnl_str})!"
 
                     if is_alerting:
-                        # Gọi trí nhớ xem mã này lần trước báo giá bao nhiêu
                         last_price = alert_memory.get(symbol_item)
+                        trend_msg = ""
+                        should_send = False
                         
-                        # 1. NẾU CHƯA TỪNG BÁO (Lần đầu lọt vào vùng nguy hiểm/chốt lời)
                         if last_price is None:
-                            send_telegram_alert(f"{alert_msg}\n📍 (Đây là thông báo lần đầu tiên)")
-                            alert_memory[symbol_item] = current_p
-                            
-                        # 2. NẾU ĐÃ BÁO RỒI VÀ GIÁ CÓ THAY ĐỔI
+                            trend_msg = "📍 (Thông báo lần đầu lọt vùng giá)"
+                            should_send = True
                         elif current_p != last_price:
                             diff = current_p - last_price
-                            
-                            # Tính toán xem đang hồi lên hay rơi tiếp
                             if diff > 0:
-                                trend = f"📈 Đang HỒI LÊN: +{diff:,.2f} giá (Từ {last_price:,.2f} ➡️ {current_p:,.2f})"
+                                trend_msg = f"📈 HỒI LÊN: +{diff:,.2f} giá (Từ {last_price:,.2f} ➡️ {current_p:,.2f})"
                             else:
-                                trend = f"📉 Đang RƠI TIẾP: {diff:,.2f} giá (Từ {last_price:,.2f} ➡️ {current_p:,.2f})"
-                                
-                            send_telegram_alert(f"{alert_msg}\n{trend}")
-                            
-                            # Cập nhật lại giá mới vào trí nhớ để lần sau so sánh tiếp
+                                trend_msg = f"📉 RƠI TIẾP: {diff:,.2f} giá (Từ {last_price:,.2f} ➡️ {current_p:,.2f})"
+                            should_send = True
+
+                        if should_send:
+                            # Bắn Telegram
+                            send_telegram_alert(f"{alert_base_msg}\n{trend_msg}")
                             alert_memory[symbol_item] = current_p
+                            
+                            # Lưu vào rổ Nhật ký
+                            now_vn = (datetime.now() + timedelta(hours=7)).strftime("%d/%m/%Y %H:%M:%S")
+                            new_logs_to_write.append({
+                                "Thời gian": now_vn,
+                                "Mã CP": symbol_item,
+                                "Giá": current_p,
+                                "Lãi/Lỗ": pnl_str,
+                                "Chi tiết": f"{action_type} - {trend_msg}"
+                            })
                     else:
-                        # Nếu giá phục hồi về vùng an toàn, xóa trí nhớ
                         if symbol_item in alert_memory:
                             del alert_memory[symbol_item]
 
-                # --- TÍNH TOÁN TIỀN TỆ (Thuế 0.1%, Phí ~0.15%) ---
-                # Lưu ý: Giá trên web đang hiển thị theo đơn vị "Nghìn đồng" (Ví dụ: 35.0 = 35,000 VNĐ)
+                # --- 2. TÍNH TOÁN THUẾ PHÍ ---
                 gia_tri_mua = buy_p * vol * 1000
                 phi_mua = gia_tri_mua * 0.0015
                 
@@ -352,24 +361,23 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN & TÍNH TOÁN LÃI/LỖ RÒNG",
                 thuc_nhan = gia_tri_ban - phi_ban - thue_ban
                 lai_lo_rong = thuc_nhan - (gia_tri_mua + phi_mua)
 
-                # Lưu vào kho chi tiết
                 portfolio_details[symbol_item] = {
                     "vol": vol, "buy_p": buy_p, "current_p": current_p,
                     "tong_thue_phi": tong_thue_phi, "thuc_nhan": thuc_nhan, "lai_lo_rong": lai_lo_rong
                 }
 
-                # Dữ liệu cho Bảng tổng quan
+                # --- 3. DỮ LIỆU BẢNG TỔNG QUAN ---
                 final_list.append({
                     "Mã CP": symbol_item,
                     "Khối lượng": f"{int(vol):,}",
                     "Giá Mua": buy_p,
                     "Hiện tại": current_p,
-                    "Lời/Lỗ (%)": f"{pnl_percent:.2f}%",
+                    "Lời/Lỗ (%)": f"{pnl:.2f}%",
                     "Stoploss": row['stop'],
                     "Target": row['target']
                 })
 
-            st.write("**Bảng theo dõi tổng quan:**")
+            st.write("📋 **Bảng theo dõi tổng quan:**")
             st.dataframe(
                 pd.DataFrame(final_list).style.map(
                     lambda x: 'color: red' if '-' in str(x) else 'color: green', 
@@ -379,13 +387,12 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN & TÍNH TOÁN LÃI/LỖ RÒNG",
             )
             
             # ==========================================
-            # KHU VỰC BÓC TÁCH THUẾ PHÍ THEO TỪNG MÃ
+            # KHU VỰC BÓC TÁCH THUẾ PHÍ THEO TỪNG MÃ (ĐÃ KHÔI PHỤC)
             # ==========================================
-            st.markdown("Phân tích Lãi/Lỗ Thực Nhận (Sau Thuế Phí)")
+            st.markdown("### 🔍 Phân tích Lãi/Lỗ Thực Nhận (Sau Thuế Phí)")
             list_ma = list(portfolio_details.keys())
             
             if list_ma:
-                # Tạo thanh chọn mã CP
                 selected_sym = st.selectbox("👉 Chọn mã CP trong danh mục để xem chi tiết:", list_ma)
                 
                 if selected_sym:
@@ -395,12 +402,10 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN & TÍNH TOÁN LÃI/LỖ RÒNG",
                     else:
                         st.write(f"Đang phân tích: **{selected_sym}** (Đang nắm giữ: {int(dt['vol']):,} cổ phiếu)")
                         
-                        # Hiển thị 4 cột Metric (Chỉ số) cực đẹp
                         c1, c2, c3, c4 = st.columns(4)
                         c1.metric("Vốn bỏ ra ban đầu", f"{int(dt['buy_p'] * dt['vol'] * 1000):,} đ")
-                        c2.metric("Tổng Thuế & Phí (2 chiều)", f"-{int(dt['tong_thue_phi']):,} đ")
+                        c2.metric("Tổng Thuế & Phí", f"-{int(dt['tong_thue_phi']):,} đ")
                         
-                        # Đổi màu Lãi/Lỗ Ròng
                         if dt['lai_lo_rong'] >= 0:
                             c3.metric("LÃI RÒNG (Bỏ túi)", f"+{int(dt['lai_lo_rong']):,} đ", "Có Lời")
                         else:
@@ -409,9 +414,28 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN & TÍNH TOÁN LÃI/LỖ RÒNG",
                         c4.metric("💰 TIỀN THỰC NHẬN", f"{int(dt['thuc_nhan']):,} đ")
                         
             st.info("💡 Lưu ý: Phí giao dịch đang tính trung bình 0.15% (cả chiều mua và bán). Thuế thu nhập 0.1% tính trên chiều bán.")
+
+            # ==========================================
+            # THỰC THI GHI LOG VÀO GOOGLE SHEETS
+            # ==========================================
+            if new_logs_to_write:
+                try:
+                    df_old_logs = conn.read(spreadsheet=SHEET_URL, worksheet="Logs", ttl=0)
+                    df_new_logs = pd.DataFrame(new_logs_to_write)
+                    
+                    if not df_old_logs.empty:
+                        df_combined = pd.concat([df_old_logs, df_new_logs], ignore_index=True)
+                    else:
+                        df_combined = df_new_logs
+                        
+                    conn.update(spreadsheet=SHEET_URL, worksheet="Logs", data=df_combined)
+                    st.toast(f"Đã ghi {len(new_logs_to_write)} biến động mới vào Nhật ký!", icon="📝")
+                except Exception as e:
+                    st.warning(f"Chưa ghi được Log. Bạn đã tạo tab 'Logs' trong file Google Sheets chưa? Lỗi: {e}")
+                    
         else:
             st.warning("File Google Sheets của bạn đang trống dữ liệu.")
-            
+
     except Exception as e:
         st.error(f"Lỗi kết nối Google Sheets: {e}")
         st.info("Vui lòng kiểm tra lại link Google Sheets và quyền chia sẻ.")
@@ -553,6 +577,7 @@ else:
         )
         send_telegram_alert(plan_msg)
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
