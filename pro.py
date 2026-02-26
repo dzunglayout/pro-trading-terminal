@@ -429,7 +429,7 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN & NHẬT KÝ LỆNH", expanded=
                         "entry.152414202": log["Mã CP"],
                         "entry.1569188493": log["Giá"],
                         "entry.1620427121": log["Lãi/Lỗ"],
-                        "entry.5555555": log["Chi tiết"]
+                        "entry.1620427121": log["Chi tiết"]
                     }
                     try:
                         # Gửi data thẳng vào Google Form (Nhanh và không bao giờ bị Google chặn)
@@ -586,6 +586,7 @@ else:
         )
         send_telegram_alert(plan_msg)
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
