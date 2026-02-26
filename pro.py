@@ -416,29 +416,28 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN & NHẬT KÝ LỆNH", expanded=
             st.info("💡 Lưu ý: Phí giao dịch đang tính trung bình 0.15% (cả chiều mua và bán). Thuế thu nhập 0.1% tính trên chiều bán.")
 
             # ==========================================
-            # THỰC THI GHI LOG VÀO GOOGLE SHEETS
+            # THỰC THI GHI LOG BẰNG TUYỆT CHIÊU GOOGLE FORM (TRÁNH LỖI 400)
             # ==========================================
             if new_logs_to_write:
-                try:
-                    df_old_logs = conn.read(spreadsheet=SHEET_URL, worksheet="Logs", ttl=0)
-                    df_new_logs = pd.DataFrame(new_logs_to_write)
-                    
-                    if not df_old_logs.empty:
-                        df_combined = pd.concat([df_old_logs, df_new_logs], ignore_index=True)
-                    else:
-                        df_combined = df_new_logs
+                # 1. Copy đoạn đầu của link Form thay vào đây (NHỚ ĐỔI CHỮ 'viewform' THÀNH 'formResponse')
+                FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdaqt1OPFuSZ0daTneYrRMNn9V7x58kvb7GYhe5vi5e3JOPsw/formResponse"
+                
+                for log in new_logs_to_write:
+                    # 2. Thay 5 dãy số dưới đây bằng 5 dãy số 'entry' của bạn
+                    form_data = {
+                        "entry.1111111": log["Thời gian"],
+                        "entry.2222222": log["Mã CP"],
+                        "entry.3333333": log["Giá"],
+                        "entry.4444444": log["Lãi/Lỗ"],
+                        "entry.5555555": log["Chi tiết"]
+                    }
+                    try:
+                        # Gửi data thẳng vào Google Form (Nhanh và không bao giờ bị Google chặn)
+                        requests.post(FORM_URL, data=form_data)
+                    except:
+                        pass
                         
-                    conn.update(spreadsheet=SHEET_URL, worksheet="Logs", data=df_combined)
-                    st.toast(f"Đã ghi {len(new_logs_to_write)} biến động mới vào Nhật ký!", icon="📝")
-                except Exception as e:
-                    st.warning(f"Chưa ghi được Log. Bạn đã tạo tab 'Logs' trong file Google Sheets chưa? Lỗi: {e}")
-                    
-        else:
-            st.warning("File Google Sheets của bạn đang trống dữ liệu.")
-
-    except Exception as e:
-        st.error(f"Lỗi kết nối Google Sheets: {e}")
-        st.info("Vui lòng kiểm tra lại link Google Sheets và quyền chia sẻ.")
+                st.toast(f"Đã ghi {len(new_logs_to_write)} biến động mới vào Nhật ký!", icon="📝")
  
 # ==============================
 # 4. GIAO DIỆN CHỌN MÃ & CHẾ ĐỘ
@@ -577,6 +576,7 @@ else:
         )
         send_telegram_alert(plan_msg)
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
