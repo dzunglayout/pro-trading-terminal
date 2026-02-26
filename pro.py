@@ -299,23 +299,43 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN & TÍNH TOÁN LÃI/LỖ RÒNG",
                 buy_p = float(row['buy'])
                 pnl_percent = ((current_p - buy_p) / buy_p * 100) if buy_p > 0 else 0
                 
-                # --- LOGIC CẢNH BÁO CHỐNG SPAM (Giữ nguyên) ---
+                # --- LOGIC CẢNH BÁO & SO SÁNH LỊCH SỬ GIÁ ---
                 if current_p > 0:
                     is_alerting = False
                     alert_msg = ""
+                    
                     if current_p <= float(row['stop']) and float(row['stop']) > 0:
                         is_alerting = True
-                        alert_msg = f"🚨 [CẮT LỖ] {symbol_item} chạm giá {current_p:,.2f}!"
+                        alert_msg = f"🚨 [VÙNG CẮT LỖ] {symbol_item} đang ở mức {current_p:,.2f}!"
                     elif current_p >= float(row['target']) and float(row['target']) > 0:
                         is_alerting = True
-                        alert_msg = f"💰 [CHỐT LÃI] {symbol_item} chạm giá {current_p:,.2f}!"
+                        alert_msg = f"💰 [VÙNG CHỐT LÃI] {symbol_item} đang ở mức {current_p:,.2f}!"
 
                     if is_alerting:
+                        # Gọi trí nhớ xem mã này lần trước báo giá bao nhiêu
                         last_price = alert_memory.get(symbol_item)
-                        if current_p != last_price:
-                            send_telegram_alert(alert_msg)
+                        
+                        # 1. NẾU CHƯA TỪNG BÁO (Lần đầu lọt vào vùng nguy hiểm/chốt lời)
+                        if last_price is None:
+                            send_telegram_alert(f"{alert_msg}\n📍 (Đây là thông báo lần đầu tiên)")
+                            alert_memory[symbol_item] = current_p
+                            
+                        # 2. NẾU ĐÃ BÁO RỒI VÀ GIÁ CÓ THAY ĐỔI
+                        elif current_p != last_price:
+                            diff = current_p - last_price
+                            
+                            # Tính toán xem đang hồi lên hay rơi tiếp
+                            if diff > 0:
+                                trend = f"📈 Đang HỒI LÊN: +{diff:,.2f} giá (Từ {last_price:,.2f} ➡️ {current_p:,.2f})"
+                            else:
+                                trend = f"📉 Đang RƠI TIẾP: {diff:,.2f} giá (Từ {last_price:,.2f} ➡️ {current_p:,.2f})"
+                                
+                            send_telegram_alert(f"{alert_msg}\n{trend}")
+                            
+                            # Cập nhật lại giá mới vào trí nhớ để lần sau so sánh tiếp
                             alert_memory[symbol_item] = current_p
                     else:
+                        # Nếu giá phục hồi về vùng an toàn, xóa trí nhớ
                         if symbol_item in alert_memory:
                             del alert_memory[symbol_item]
 
@@ -533,6 +553,7 @@ else:
         )
         send_telegram_alert(plan_msg)
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
