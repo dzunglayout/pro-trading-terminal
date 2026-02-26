@@ -425,10 +425,10 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN & NHẬT KÝ LỆNH", expanded=
                 for log in new_logs_to_write:
                     # 2. Thay 5 dãy số dưới đây bằng 5 dãy số 'entry' của bạn
                     form_data = {
-                        "entry.1436434245": log["Thời gian"],
-                        "entry.152414202": log["Mã CP"],
-                        "entry.1569188493": log["Giá"],
-                        "entry.1620427121": log["Lãi/Lỗ"],
+                        "entry.2052957934": log["Thời gian"],
+                        "entry.1436434245": log["Mã CP"],
+                        "entry.152414202": log["Giá"],
+                        "entry.1569188493": log["Lãi/Lỗ"],
                         "entry.1620427121": log["Chi tiết"]
                     }
                     try:
@@ -586,6 +586,7 @@ else:
         )
         send_telegram_alert(plan_msg)
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
