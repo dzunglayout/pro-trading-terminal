@@ -438,6 +438,16 @@ with st.expander("📊 DANH MỤC TRỰC CHIẾN & NHẬT KÝ LỆNH", expanded=
                         pass
                         
                 st.toast(f"Đã ghi {len(new_logs_to_write)} biến động mới vào Nhật ký!", icon="📝")
+
+# --- ĐOẠN ĐUÔI BỊ THIẾU BẮT ĐẦU TỪ ĐÂY ---
+        # Lệnh else này dùng để báo lỗi nếu file Sheets trống
+        else:
+            st.warning("File Google Sheets của bạn đang trống dữ liệu.")
+
+    # Lệnh except này là để chốt sổ cho cái lệnh "try:" kết nối Google Sheets ở tít trên cùng
+    except Exception as e:
+        st.error(f"Lỗi kết nối Google Sheets: {e}")
+        st.info("Vui lòng kiểm tra lại link Google Sheets và quyền chia sẻ.")
  
 # ==============================
 # 4. GIAO DIỆN CHỌN MÃ & CHẾ ĐỘ
@@ -576,6 +586,7 @@ else:
         )
         send_telegram_alert(plan_msg)
         st.toast(f"✅ Đã gửi kế hoạch {symbol} vào Telegram của bạn!", icon="🚀")
+
 
 
 
