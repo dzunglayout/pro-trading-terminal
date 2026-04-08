@@ -2,8 +2,8 @@ name: Keep Streamlit Alive
 
 on:
   schedule:
-    - cron: '0 */24 * * *'  # Chạy mỗi 24 tiếng
-  workflow_dispatch:          # Cho phép chạy thủ công trên GitHub
+    - cron: '0 */23 * * *'
+  workflow_dispatch:
 
 jobs:
   ping:
@@ -13,5 +13,6 @@ jobs:
       - name: Ping Streamlit App
         run: |
           echo "🚀 Pinging Streamlit app..."
-          STATUS=$(curl -L --max-time 30 -s -o /dev/null -w "%{http_code}" https://pro-trading-terminal-pudpz9huwuwsgpxt5j4hp9.streamlit.app)
-          echo "✅ Response status: $STATUS"
+          curl -L --max-time 60 -s -o /dev/null -w "Status: %{http_code}\n" \
+            https://pro-trading-terminal-pudpz9huwuwsgpxt5j4hp9.streamlit.app/ || true
+          echo "✅ Done"
