@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1Dc3bHb7xKQkjDQgMNCi4JqD62DlH50EtbkMC0gIa2Yk/export?format=csv"
 FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdaqt1OPFuSZ0daTneYrRMNn9V7x58kvb7GYhe5vi5e3JOPsw/formResponse"
 
-TELEGRAM_TOKEN = "AAEh9DwH_iTHYsF7TihlsgKR4BmnMZfRVYI"
+TELEGRAM_TOKEN = "8563387783:AAEh9DwH_iTHYsF7TihlsgKR4BmnMZfRVYI"
 TELEGRAM_CHAT_ID = "1972517879"
 
 def send_telegram(message):
